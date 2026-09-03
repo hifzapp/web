@@ -1,0 +1,53 @@
+<svg
+  width="512"
+  height="512"
+  viewBox="0 0 512 512"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <rect width="512" height="512" rx="120" fill="black"/>
+
+  <g transform="translate(-24 -28)">
+    <path
+      d="
+        M132 190
+        C132 160 155 138 185 138
+        C215 138 238 160 238 190
+
+        L238 276
+
+        C238 308 264 334 296 334
+        C328 334 354 308 354 276
+
+        L354 190
+        C354 160 377 138 407 138
+        C437 138 460 160 460 190
+
+        L460 282
+
+        C460 355 401 414 328 414
+        C255 414 196 355 196 282
+
+        L196 220
+        C196 204 183 192 167 192
+        C151 192 138 204 138 220
+        L138 282
+      "
+      stroke="white"
+      stroke-width="28"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+
+    <path
+      d="
+        M238 276
+        C238 308 264 334 296 334
+        C328 334 354 308 354 276
+      "
+      stroke="black"
+      stroke-width="12"
+      stroke-linecap="round"
+    />
+  </g>
+</svg>
