@@ -12,6 +12,8 @@ type AyahRecitationProps = {
   autoPlay?: boolean;
   onComplete?: () => void;
   className?: string;
+  onPreviousAyah?: () => void;
+  onNextAyah?: () => void;
 };
 
 function splitIntoGroups(
@@ -51,10 +53,12 @@ export default function AyahRecitation({
   autoPlay = true,
   onComplete,
   className = "",
+  onPreviousAyah,
+  onNextAyah,
 }: AyahRecitationProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const rafRef = useRef<number | null>(null);
-
+  const [currentAyah, setCurrentAyah] = useState(0);
   const [currentGroup, setCurrentGroup] = useState(0);
   const [currentWord, setCurrentWord] = useState(-1);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -320,33 +324,36 @@ export default function AyahRecitation({
     playCurrentGroup();
   }, [currentGroup]);
 
-  const nextGroup = () => {
-    if (currentGroup >= groups.length - 1) {
-      const audio = audioRef.current;
+const nextGroup = () => {
+  if (currentGroup >= groups.length - 1) {
+    const audio = audioRef.current;
 
-      if (audio) {
-        audio.pause();
-        audio.currentTime = 0;
-      }
-
-      stopTracking();
-      setIsPlaying(false);
-      setCurrentWord(-1);
-
-      onComplete?.();
-
-      return;
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
     }
 
-    setCurrentGroup((previous) => previous + 1);
-  };
+    stopTracking();
+    setIsPlaying(false);
+    setCurrentWord(-1);
+
+    onComplete?.();
+
+    onNextAyah?.();
+
+    return;
+  }
+
+  setCurrentGroup((previous) => previous + 1);
+};
 
   const previousGroup = () => {
-    if (currentGroup <= 0) {
+    if (currentGroup > 0) {
+      setCurrentGroup((previous) => previous - 1);
       return;
     }
 
-    setCurrentGroup((previous) => previous - 1);
+    onPreviousAyah?.();
   };
 
   const togglePlay = async () => {
@@ -366,6 +373,8 @@ export default function AyahRecitation({
       audio.pause();
     }
   };
+
+  
 
   return (
     <div
@@ -435,7 +444,6 @@ export default function AyahRecitation({
             <button
               type="button"
               onClick={previousGroup}
-              disabled={currentGroup === 0}
               className="flex h-12 w-12 items-center justify-center rounded-full border border-neutral-200 text-neutral-900 transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-30 dark:border-neutral-800 dark:text-white"
             >
               →

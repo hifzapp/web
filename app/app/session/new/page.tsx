@@ -2,10 +2,22 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Check, ChevronLeft, ChevronRight, Search } from "lucide-react";
 
 import { useUser } from "@/contexts/user-context";
 import { numberToArabic, surahNames } from "@/lib/format";
 import api from "@/lib/api";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 type Ayah = {
   id: number;
@@ -42,8 +54,13 @@ export default function NewSession() {
   const [quranLoading, setQuranLoading] = useState(true);
   const [quranError, setQuranError] = useState<string | null>(null);
 
+  const [step, setStep] = useState(1);
+
   const [surahNumber, setSurahNumber] = useState(1);
-  const [startAyah, setStartAyah] = useState(1);
+  const [startAyah, setStartAyah] = useState<number | null>(null);
+
+  const [surahDialogOpen, setSurahDialogOpen] = useState(false);
+  const [surahSearch, setSurahSearch] = useState("");
 
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -88,6 +105,8 @@ export default function NewSession() {
   }, [quran, surahNumber]);
 
   const startingAyah = useMemo(() => {
+    if (!startAyah) return undefined;
+
     return surahAyahs.find(
       (ayah) => ayah.ayah_number === startAyah
     );
@@ -107,27 +126,61 @@ export default function NewSession() {
   const lastSelectedAyah =
     selectedAyahs[selectedAyahs.length - 1];
 
-  const startDescription = firstSelectedAyah
-    ? `الآية ${numberToArabic(
-        firstSelectedAyah.ayah_number
-      )} من سورة ${
-        surahNames[firstSelectedAyah.surah_number]
-      }`
-    : null;
+  const filteredSurahs = useMemo(() => {
+    const query = surahSearch.trim().toLowerCase();
 
-  const endDescription = lastSelectedAyah
-    ? `الآية ${numberToArabic(
-        lastSelectedAyah.ayah_number
-      )} من سورة ${
-        surahNames[lastSelectedAyah.surah_number]
-      }`
-    : null;
+    if (!query) {
+      return Array.from({ length: 114 }, (_, index) => index + 1);
+    }
+
+    return Array.from({ length: 114 }, (_, index) => index + 1).filter(
+      (number) =>
+        surahNames[number]
+          ?.toLowerCase()
+          .includes(query) ||
+        String(number).includes(query)
+    );
+  }, [surahSearch]);
+
+  const canContinue = () => {
+    if (step === 1) return surahNumber > 0;
+    if (step === 2) return startAyah !== null;
+    return true;
+  };
+
+  function handleNext() {
+    if (!canContinue()) return;
+
+    setCreateError(null);
+
+    if (step < 3) {
+      setStep((current) => current + 1);
+    }
+  }
+
+  function handleBack() {
+    setCreateError(null);
+
+    if (step > 1) {
+      setStep((current) => current - 1);
+    }
+  }
+
+  function handleSelectSurah(number: number) {
+    setSurahNumber(number);
+    setStartAyah(null);
+    setSurahDialogOpen(false);
+    setSurahSearch("");
+  }
+
+  function handleSelectAyah(ayahNumber: number) {
+    setStartAyah(ayahNumber);
+  }
 
   async function handleStartSession() {
     if (
       creating ||
       !user ||
-      selectedAyahs.length === 0 ||
       !firstSelectedAyah ||
       !lastSelectedAyah
     ) {
@@ -162,20 +215,25 @@ export default function NewSession() {
 
       router.push(`/app/session/${session.id}`);
     } catch (error) {
-     console.error(error); 
-     setCreateError( error instanceof Error ? error.message : "تعذر إنشاء جلسة الحفظ." ); 
-     setCreating(false);
-    }
+      console.error(error);
 
+      setCreateError(
+        error instanceof Error
+          ? error.message
+          : "تعذر إنشاء جلسة الحفظ."
+      );
+
+      setCreating(false);
+    }
   }
 
   if (userLoading || quranLoading || !user) {
     return (
       <main className="min-h-screen px-5 py-8">
         <div className="mx-auto max-w-4xl animate-pulse">
-          <div className="h-10 w-48 rounded-xl bg-neutral-200 dark:bg-neutral-800" />
+          <div className="h-8 w-32 rounded-xl bg-neutral-200 dark:bg-neutral-800" />
 
-          <div className="mt-6 h-64 rounded-3xl bg-neutral-100 dark:bg-neutral-900" />
+          <div className="mt-8 h-[500px] rounded-[2rem] bg-neutral-100 dark:bg-neutral-900" />
         </div>
       </main>
     );
@@ -185,12 +243,10 @@ export default function NewSession() {
     return (
       <main
         dir="rtl"
-        className="px-5 py-8 sm:px-8 lg:px-10"
+        className="flex min-h-screen items-center justify-center px-5"
       >
-        <div className="mx-auto max-w-4xl">
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400">
-            {quranError}
-          </div>
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400">
+          {quranError}
         </div>
       </main>
     );
@@ -199,173 +255,397 @@ export default function NewSession() {
   return (
     <main
       dir="rtl"
-      className="px-5 py-8 sm:px-8 lg:px-10"
+      className="px-5 py-10 sm:px-8 lg:px-10"
     >
-      <div className="mx-auto max-w-4xl space-y-6">
-        <header>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            جلسة جديدة
-          </p>
+      <div className="mx-auto flex max-w-3xl flex-col">
 
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-            ماذا تريد أن تحفظ اليوم؟
-          </h1>
-        </header>
-
-        <section className="rounded-3xl border border-neutral-200 bg-neutral-50 p-7 dark:border-neutral-800 dark:bg-neutral-950 sm:p-10">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div>
-              <label
-                htmlFor="surah"
-                className="mb-2 block text-sm font-medium"
-              >
-                السورة
-              </label>
-
-              <select
-                id="surah"
-                value={surahNumber}
-                onChange={(event) => {
-                  setSurahNumber(Number(event.target.value));
-                  setStartAyah(1);
-                }}
-                className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 outline-none dark:border-neutral-800 dark:bg-black"
-              >
-                {Array.from({ length: 114 }, (_, index) => {
-                  const number = index + 1;
-
-                  return (
-                    <option key={number} value={number}>
-                      سورة {surahNames[number]}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-
-            <div>
-              <label
-                htmlFor="ayah"
-                className="mb-2 block text-sm font-medium"
-              >
-                أول آية
-              </label>
-
-              <select
-                id="ayah"
-                value={startAyah}
-                onChange={(event) =>
-                  setStartAyah(Number(event.target.value))
-                }
-                className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 outline-none dark:border-neutral-800 dark:bg-black"
-              >
-                {surahAyahs.map((ayah) => (
-                  <option
-                    key={ayah.id}
-                    value={ayah.ayah_number}
-                  >
-                    الآية {ayah.ayah_number}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <div className="mb-12">
+          <div className="flex items-center justify-center gap-3">
+            {[1, 2, 3].map((item) => (
+              <div
+                key={item}
+                className={`h-1.5 rounded-full transition-all duration-500 ${
+                  item <= step
+                    ? "w-16 bg-black dark:bg-white"
+                    : "w-8 bg-neutral-200 dark:bg-neutral-800"
+                }`}
+              />
+            ))}
           </div>
 
-          <div className="mt-8 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-black">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-neutral-500 dark:text-neutral-400">
-                هدفك اليومي
-              </span>
+          <p className="mt-4 text-center text-xs text-neutral-400">
+            الخطوة {numberToArabic(step)} من {numberToArabic(3)}
+          </p>
+        </div>
 
-              <span className="font-semibold">
-                {user.daily_goal} آية
-              </span>
+
+        {step === 1 && (
+          <section className="flex flex-1 flex-col">
+            <div className="text-center">
+              <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+                لنبدأ الحصة
+              </p>
+
+              <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+                ما السورة التي تريد أن تحفظ منها؟
+              </h1>
+
+              <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-neutral-500 dark:text-neutral-400">
+                اختر السورة التي تريد أن تبدأ منها اليوم، وسنحدد
+                لك بقية الحصة بناءً على هدفك اليومي.
+              </p>
             </div>
 
-            {firstSelectedAyah && lastSelectedAyah && (
-              <div className="mt-5 space-y-4">
-                <div>
+            <div className="my-auto flex justify-center py-16">
+              <Dialog
+                open={surahDialogOpen}
+                onOpenChange={setSurahDialogOpen}
+              >
+                <DialogTrigger className={"w-full"} >
+                  <button
+                    type="button"
+                    className="group w-1/2 rounded-[2rem] border border-neutral-200 bg-white p-8 text-right shadow-sm transition-all duration-300 dark:border-neutral-800 dark:bg-neutral-950"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-neutral-400">
+                          السورة المختارة
+                        </p>
+
+                        <p className="mt-2 text-2xl font-semibold">
+                          سورة {surahNames[surahNumber]}
+                        </p>
+
+                        <p className="mt-1 text-sm text-neutral-400">
+                          السورة {numberToArabic(surahNumber)}
+                        </p>
+                      </div>
+
+                      
+                    </div>
+                  </button>
+                </DialogTrigger>
+
+                <DialogContent
+                  dir="rtl"
+                  className="max-w-lg overflow-hidden rounded-[2rem] p-0"
+                >
+                  <DialogHeader className="px-6 pt-6">
+                    <DialogTitle className="text-xl">
+                      اختر السورة
+                    </DialogTitle>
+                  </DialogHeader>
+
+                  <div className="px-6 pb-4">
+                    <div className="relative">
+                      <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+
+                      <Input
+                        value={surahSearch}
+                        onChange={(event) =>
+                          setSurahSearch(event.target.value)
+                        }
+                        placeholder="ابحث عن سورة..."
+                        className="h-11 rounded-xl pr-10"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="max-h-[55vh] overflow-y-auto px-4 pb-5">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {filteredSurahs.map((number) => {
+                        const selected =
+                          number === surahNumber;
+
+                        return (
+                          <button
+                            key={number}
+                            type="button"
+                            onClick={() =>
+                              handleSelectSurah(number)
+                            }
+                            className={`flex items-center justify-between rounded-xl border p-4 text-right transition-all ${
+                              selected
+                                ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
+                                : "border-neutral-200 hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900"
+                            }`}
+                          >
+                            <div>
+                              <p className="font-medium">
+                                سورة {surahNames[number]}
+                              </p>
+
+                              <p
+                                className={`mt-1 text-xs ${
+                                  selected
+                                    ? "text-white/60 dark:text-black/60"
+                                    : "text-neutral-400"
+                                }`}
+                              >
+                                {numberToArabic(number)}
+                              </p>
+                            </div>
+
+                            {selected && (
+                              <Check className="h-4 w-4" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                onClick={handleNext}
+                className="h-12 rounded-xl px-7"
+              >
+                التالي
+                <ChevronLeft className="mr-2 h-4 w-4" />
+              </Button>
+            </div>
+          </section>
+        )}
+
+
+        {step === 2 && (
+          <section className="flex flex-1 flex-col">
+            <div className="text-center">
+              <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+                سورة {surahNames[surahNumber]}
+              </p>
+
+              <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+                من أي آية تريد أن تبدأ؟
+              </h1>
+
+              <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-neutral-500 dark:text-neutral-400">
+                اختر الآية التي تريد أن تكون بداية حفظك اليوم.
+              </p>
+            </div>
+
+
+            <div className="mt-10 rounded-[1.5rem] border border-neutral-200 bg-neutral-50 p-5 text-center dark:border-neutral-800 dark:bg-neutral-950">
+              {firstSelectedAyah && lastSelectedAyah ? (
+               <>
+  <p className="text-sm text-neutral-500 dark:text-neutral-400">
+    ستبدأ الحفظ من
+  </p>
+
+  <p className="mt-4 text-2xl font-[QuranCommon] leading-[2.2] font-semibold">
+    {firstSelectedAyah.text}
+  </p>
+
+  <p className="my-3 text-neutral-300 dark:text-neutral-700">
+    إلى
+  </p>
+
+  <p className="text-2xl font-[QuranCommon] leading-[2.2] font-semibold">
+    {lastSelectedAyah.text}
+  </p>
+
+  <p className="mt-4 text-xs text-neutral-400">
+    {numberToArabic(selectedAyahs.length)} آية
+  </p>
+</>
+              ) : (
+                <>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                    ستبدأ من
+                    اختر آية للبدء
                   </p>
 
-                  <p className="mt-1 text-lg font-semibold">
-                    {startDescription}
+                  <p className="mt-2 font-medium">
+                    هدفك اليومي:{" "}
+                    {numberToArabic(user.daily_goal)} آية
                   </p>
+                </>
+              )}
+            </div>
+
+
+            <div className="mt-6 flex-1 overflow-hidden rounded-[2rem] border border-neutral-200 dark:border-neutral-800">
+              <div className="max-h-[430px] overflow-y-auto p-3">
+                <div className="space-y-2">
+                  {surahAyahs.map((ayah) => {
+                    const selected =
+                      ayah.ayah_number === startAyah;
+
+                    return (
+                      <button
+                        key={ayah.id}
+                        type="button"
+                        onClick={() =>
+                          handleSelectAyah(
+                            ayah.ayah_number
+                          )
+                        }
+                        className={`group w-full rounded-2xl p-5 text-right transition-all duration-200 ${
+                          selected
+                            ? "bg-black text-white shadow-lg dark:bg-white dark:text-black"
+                            : "hover:bg-neutral-50 dark:hover:bg-neutral-900"
+                        }`}
+                      >
+                        <div className="mb-3 flex items-center gap-3">
+                          <span
+                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium `}
+                        
+                          >
+                            {numberToArabic(
+                              ayah.ayah_number
+                            )}
+                          </span>
+
+                         
+                        </div>
+
+                        <p
+                          className={`font-[QuranCommon] text-2xl leading-[2.3] ${
+                            selected
+                              ? "text-white dark:text-black"
+                              : "text-neutral-900 dark:text-neutral-100"
+                          }`}
+                        >
+                          {ayah.text}
+                        </p>
+                      </button>
+                    );
+                  })}
                 </div>
+              </div>
+            </div>
 
-                <div>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                    وتنتهي عند
-                  </p>
-
-                  <p className="mt-1 text-lg font-semibold">
-                    {endDescription}
-                  </p>
-                </div>
+            {createError && (
+              <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400">
+                {createError}
               </div>
             )}
 
-            <div className="mt-5">
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                عدد الآيات
-              </p>
+            <div className="mt-6 flex items-center justify-between">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleBack}
+                className="h-12 rounded-xl px-5"
+              >
+                <ChevronRight className="ml-2 h-4 w-4" />
+                رجوع
+              </Button>
 
-              <p className="mt-1 font-semibold">
-                {selectedAyahs.length}
-              </p>
+              <Button
+                onClick={handleNext}
+                disabled={!startAyah}
+                className="h-12 rounded-xl px-7"
+              >
+                التالي
+                <ChevronLeft className="mr-2 h-4 w-4" />
+              </Button>
             </div>
-          </div>
+          </section>
+        )}
 
-          {selectedAyahs.length > 0 && (
-            <div className="mt-8">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-medium">
-                  الآيات المحددة
-                </p>
 
-                <span className="text-xs text-neutral-400">
-                  {selectedAyahs.length} آية
+        {step === 3 && (
+          <section className="flex flex-1 flex-col">
+            <div className="flex flex-1 flex-col items-center justify-center text-center">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950">
+                <Check className="h-8 w-8" />
+              </div>
+
+              <p className="mt-8 text-sm font-medium text-neutral-500 dark:text-neutral-400">
+                كل شيء جاهز
+              </p>
+
+              <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+                هل أنت مستعد؟
+              </h1>
+
+              <p className="mx-auto mt-5 max-w-lg text-sm leading-8 text-neutral-500 dark:text-neutral-400">
+                ستبدأ جلسة الحفظ من الآية{" "}
+                <span className="font-semibold text-neutral-900 dark:text-white">
+                  {firstSelectedAyah
+                    ? numberToArabic(
+                        firstSelectedAyah.ayah_number
+                      )
+                    : ""}
+                </span>{" "}
+                إلى الآية{" "}
+                <span className="font-semibold text-neutral-900 dark:text-white">
+                  {lastSelectedAyah
+                    ? numberToArabic(
+                        lastSelectedAyah.ayah_number
+                      )
+                    : ""}
+                </span>{" "}
+                من سورة{" "}
+                <span className="font-semibold text-neutral-900 dark:text-white">
+                  {surahNames[surahNumber]}
                 </span>
-              </div>
+                .
+              </p>
 
-              <div className="max-h-80 space-y-3 overflow-y-auto rounded-2xl border border-neutral-200 p-5 dark:border-neutral-800">
-                {selectedAyahs.map((ayah) => (
-                  <div
-                    key={ayah.id}
-                    className="border-b border-neutral-100 pb-3 last:border-0 last:pb-0 dark:border-neutral-900"
-                  >
-                    <span className="ml-2 text-xs text-neutral-400">
-                      {ayah.verse_key}
-                    </span>
+              <div className="mt-10 grid w-full max-w-md grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-neutral-200 p-5 dark:border-neutral-800">
+                  <p className="text-xs text-neutral-400">
+                    السورة
+                  </p>
 
-                    <span className="font-[QuranCommon] text-2xl leading-[2.5]">
-                      {ayah.text}
-                    </span>
-                  </div>
-                ))}
+                  <p className="mt-2 font-semibold">
+                    {surahNames[surahNumber]}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-neutral-200 p-5 dark:border-neutral-800">
+                  <p className="text-xs text-neutral-400">
+                    عدد الآيات
+                  </p>
+
+                  <p className="mt-2 font-semibold">
+                    {numberToArabic(selectedAyahs.length)}
+                  </p>
+                </div>
               </div>
             </div>
-          )}
 
-          {createError && (
-            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400">
-              {createError}
+            {createError && (
+              <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400">
+                {createError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleBack}
+                disabled={creating}
+                className="h-12 rounded-xl px-5"
+              >
+                <ChevronRight className="ml-2 h-4 w-4" />
+                رجوع
+              </Button>
+
+              <Button
+                type="button"
+                onClick={handleStartSession}
+                disabled={
+                  creating ||
+                  selectedAyahs.length === 0
+                }
+                className="h-12 rounded-xl px-8"
+              >
+                {creating
+                  ? "جاري تجهيز الحصة..."
+                  : "ابدأ الحصة"}
+                {!creating && (
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                )}
+              </Button>
             </div>
-          )}
-
-          <button
-            type="button"
-            onClick={handleStartSession}
-            disabled={
-              creating ||
-              selectedAyahs.length === 0
-            }
-            className="mt-8 w-full rounded-xl bg-black px-7 py-3.5 text-sm font-semibold text-white transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-black"
-          >
-            {creating ? "جاري إنشاء الجلسة..." : "ابدأ الحفظ"}
-          </button>
-        </section>
+          </section>
+        )}
       </div>
     </main>
   );

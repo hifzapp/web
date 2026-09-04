@@ -67,12 +67,13 @@ const { user, loading } = useUser();
     if (loading) return;
 
     if (!user) {
-        router.replace("/");
+        router.push("/")
+
         return;
     }
 
     if (user.onboarded && isSettings == false) {
-      router.replace("/app");
+      router.push("/app")
       return;
     }
 
@@ -166,43 +167,31 @@ const { user, loading } = useUser();
     );
   };
 
-  const handleSubmit = async () => {
-    if (!selectedGoal || isSubmitting) return;
+const handleSubmit = async () => {
+  if (!selectedGoal || isSubmitting) return;
 
-    setIsSubmitting(true);
-    setError(null);
+  setIsSubmitting(true);
+  setError(null);
 
-    try {
-      await api.post("/app/user/onboarding", {
-        daily_goal: selectedGoal,
-      });
+  try {
+    await api.post("/app/user/onboarding", {
+      daily_goal: selectedGoal,
+    });
 
-      const container = containerRef.current;
+    window.location.reload();
+  } catch (error) {
+    console.error(
+      "Failed to complete onboarding:",
+      handleApiError(error),
+    );
 
-      if (container) {
-        await gsap.to(container, {
-          opacity: 0,
-          y: -30,
-          duration: 0.5,
-          ease: "power3.in",
-        });
-      }
+    setError(
+      "Unable to save your daily goal. Please try again.",
+    );
 
-      router.replace("/app");
-    } catch (error) {
-      console.error(
-        "Failed to complete onboarding:",
-        handleApiError(error),
-      );
-
-      setError(
-        "Unable to save your daily goal. Please try again.",
-      );
-
-      setIsSubmitting(false);
-    }
-  };
-
+    setIsSubmitting(false);
+  }
+};
  
   if (checkingUser) {
     return null;

@@ -13,6 +13,7 @@ import {
   Sparkles,
   Target,
 } from "lucide-react";
+import GoogleAuthButton from "@/components/ui/google-auth";
 
 gsap.registerPlugin(ScrollTrigger);
 const principles = [
@@ -552,7 +553,7 @@ export default function About() {
       </div>
 
       <div className="cinematic-scene absolute inset-0 flex h-full w-full items-center justify-center px-6">
-        <div className="relative z-10 text-center">
+        <div className="relative z-10 text-center flex justify-center items-center flex-col">
           <p className="mb-8 text-sm text-muted-foreground">
             الغاية واضحة
           </p>
@@ -562,10 +563,12 @@ export default function About() {
           </h2>
 
           <p className="mx-auto mt-8 max-w-xl text-lg leading-9 text-muted-foreground">
-            آية تثبت في الصدر.
+           انشأ حساب الان
             <br />
-            ويوم يعقبه يوم.
+        
           </p>
+              <GoogleAuthButton />
+          
         </div>
 
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-border" />

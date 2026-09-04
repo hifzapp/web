@@ -12,7 +12,7 @@ import {
   FinalTestState,
   Ayah,
 } from "@/types/types";
-import { CDN_URL, REPETITIONS_PER_AYAH } from "@/constant/constant";
+import { CDN_URL } from "@/constant/constant";
 import { isArabicMatch } from "@/lib/utils";
 import LoadingStage from "./loading-stage";
 import ErrorStage from "./error-stage";
@@ -320,6 +320,24 @@ const handleCheckAnswer = () => {
     }
   };
 
+    const handleNextAyah = () => {
+    if (!session || currentAyahNumber === null) return;
+
+    if (currentAyahNumber < session.end_ayah) {
+      setCurrentAyahNumber((prev) => (prev ?? 0) + 1);
+    } else {
+      setStage("testing");
+    }
+  };
+
+  const handlePreviousAyah = () => {
+    if (!session || currentAyahNumber === null) return;
+
+    if (currentAyahNumber > session.start_ayah) {
+      setCurrentAyahNumber((prev) => (prev ?? 0) - 1);
+    }
+  };
+
   const handleCloseSuccess = () => {
     router.push("/dashboard");
   };
@@ -340,7 +358,8 @@ const handleCheckAnswer = () => {
         currentAyah={currentAyah}
         recitationAyah={recitationAyah}
         audioUrl={audioUrl}
-        repetitions={REPETITIONS_PER_AYAH}
+        onNextAyah={handleNextAyah}
+      onPreviousAyah={handlePreviousAyah}
         onComplete={handleListeningComplete}
       />
     );

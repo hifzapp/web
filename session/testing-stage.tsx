@@ -35,11 +35,18 @@ type Result = "success" | "failed" | null;
 
 const normalizeArabic = (text: string) => {
   return text
-    .replace(/[\u064B-\u0652]/g, "") 
-    .replace(/[أإآ]/g, "ا") 
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g, "")
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/ى/g, "ي")
     .replace(/ؤ/g, "و")
     .replace(/ئ/g, "ي")
-    .replace(/ء/g, ""); 
+    .replace(/ء/g, "")
+    .replace(/ـ/g, "")
+    .replace(/[^\u0621-\u064A\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 };
 
 export default function TestStage({
@@ -228,18 +235,17 @@ export default function TestStage({
     });
   }, [shuffledWords, userInput]);
 
-  const filteredWords = useMemo(() => {
-    const query = wordInput.trim();
-    if (!query) return [];
+const filteredWords = useMemo(() => {
+  const query = normalizeArabic(wordInput);
 
-    const normalizedQuery = normalizeArabic(query);
-    if (!normalizedQuery) return [];
+  if (!query) return [];
 
-    return availableWords.filter((word) => {
-      const normalizedWord = normalizeArabic(word.word);
-      return normalizedWord.includes(normalizedQuery); 
-    });
-  }, [availableWords, wordInput]);
+  return availableWords.filter((word) => {
+    const normalizedWord = normalizeArabic(word.word);
+
+    return normalizedWord.includes(query);
+  });
+}, [availableWords, wordInput]);
 
   const Check = async () => {
     const correctOrder = dividedBlocks.flatMap((block) =>
