@@ -7,8 +7,9 @@ interface ListeningStageProps {
   currentAyah: Ayah;
   recitationAyah: RecitationAyah;
   audioUrl: string;
-  repetitions: number;
-  onComplete: () => void;
+  onComplete?: () => void;
+  onNextAyah?: () => void;
+  onPreviousAyah?: () => void;
 }
 
 export default function ListeningStage({
@@ -16,8 +17,10 @@ export default function ListeningStage({
   currentAyah,
   recitationAyah,
   audioUrl,
-  repetitions,
   onComplete,
+  onNextAyah,
+  onPreviousAyah,
+
 }: ListeningStageProps) {
   return (
     <main dir="rtl" className="px-5 py-8">
@@ -35,7 +38,6 @@ export default function ListeningStage({
             <p className="mt-1">
               الحفظ : {session.start_ayah} - {session.end_ayah} آية
             </p>
-            <p className="mt-1">التكرار: {repetitions} مرات</p>
           </div>
         </header>
 
@@ -44,6 +46,8 @@ export default function ListeningStage({
           segments={recitationAyah.segments}
           audioUrl={audioUrl}
           onComplete={onComplete}
+          onNextAyah={onNextAyah}
+          onPreviousAyah={onPreviousAyah}
         />
       </div>
     </main>
